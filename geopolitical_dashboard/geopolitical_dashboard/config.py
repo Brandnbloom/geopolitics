@@ -1,14 +1,13 @@
 """
 config.py - Central configuration for Geopolitical Market Intelligence Dashboard
 """
-
+import os
 from datetime import date
 
 # ─────────────────────────────────────────────
 # ★ YOUR API KEYS — fill these in
 # ─────────────────────────────────────────────
-import os
-NEWSAPI_KEY = "e1379ea1ef3e44b6b2ad4774e1dfed57"   # https://newsapi.org — free tier: 100 req/day
+NEWSAPI_KEY = os.environ.get"e1379ea1ef3e44b6b2ad4774e1dfed57"   # https://newsapi.org — free tier: 100 req/day
 
 # ─────────────────────────────────────────────
 # DATE RANGE
