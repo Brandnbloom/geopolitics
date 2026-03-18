@@ -81,7 +81,6 @@ html, body, [class*="css"] {
 .kpi-neg    { color: #FF3B5B; font-size: 12px; font-weight: 600; margin-top: 4px; }
 .kpi-neu    { color: #FFD700; font-size: 12px; font-weight: 600; margin-top: 4px; }
 
-/* Live ticker strip */
 .ticker-strip {
     background: #0D1120; border: 1px solid #1E2D45; border-radius: 8px;
     padding: 8px 14px; display: flex; gap: 28px; overflow-x: auto;
@@ -124,6 +123,32 @@ html, body, [class*="css"] {
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# HELPERS
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _color_num(v):
+    """Cell styler for numeric change columns."""
+    if isinstance(v, (int, float)):
+        return f"color:{'#00E5A0' if v > 0 else '#FF3B5B' if v < 0 else '#FFD700'}"
+    return ""
+
+def _color_perf(v):
+    """Cell styler for performance league table."""
+    if not isinstance(v, (int, float)):
+        return ""
+    if v > 20:  return "color:#00E5A0;font-weight:700"
+    if v > 0:   return "color:#34D399"
+    if v > -20: return "color:#FF8C42"
+    return "color:#FF3B5B;font-weight:700"
+
+def _color_risk(v):
+    """Cell styler for risk level column."""
+    return ("color:#FF3B5B;font-weight:700" if v == "HIGH" else
+            "color:#FF8C42;font-weight:700" if v == "MEDIUM" else
+            "color:#00E5A0;font-weight:700" if v == "LOW" else "")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # HEADER
 # ─────────────────────────────────────────────────────────────────────────────
 def render_header(last_updated: str, risk_score: float, risk_label: str, data_ok: bool):
@@ -140,7 +165,7 @@ def render_header(last_updated: str, risk_score: float, risk_label: str, data_ok
           </div>
         </div>""", unsafe_allow_html=True)
     with c2:
-        rc = "#FF3B5B" if risk_label in ("CRITICAL","HIGH") else "#FF8C42" if risk_label == "ELEVATED" else "#FFD700"
+        rc = "#FF3B5B" if risk_label in ("CRITICAL", "HIGH") else "#FF8C42" if risk_label == "ELEVATED" else "#FFD700"
         st.markdown(f"""
         <div style="text-align:right;padding-top:4px;">
           <div style="font-size:11px;color:#8B99B5;text-transform:uppercase;letter-spacing:1px;">Global Risk Index</div>
@@ -164,7 +189,7 @@ def render_header(last_updated: str, risk_score: float, risk_label: str, data_ok
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# LIVE TICKER STRIP  (intraday quotes for key assets)
+# LIVE TICKER STRIP
 # ─────────────────────────────────────────────────────────────────────────────
 _TICKER_ASSETS = [
     "S&P 500", "Nasdaq", "NIFTY 50", "Hang Seng",
@@ -183,8 +208,7 @@ def render_ticker_strip(live_quotes: dict):
         chg   = q["change_pct"]
         arrow = "▲" if chg >= 0 else "▼"
         cls   = "ticker-chg-pos" if chg >= 0 else "ticker-chg-neg"
-        # Format price sensibly
-        fmt = f"{price:,.4f}" if price < 10 else f"{price:,.2f}" if price < 10000 else f"{price:,.0f}"
+        fmt   = f"{price:,.4f}" if price < 10 else f"{price:,.2f}" if price < 10000 else f"{price:,.0f}"
         items_html += f"""
         <div class="ticker-item">
           <span class="ticker-name">{name}</span>
@@ -219,7 +243,7 @@ def render_kpi_bar(kpis: list):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PRICE CHART with geo-event annotations
+# PRICE CHART
 # ─────────────────────────────────────────────────────────────────────────────
 def build_price_chart(asset_name: str, price_df: pd.DataFrame,
                       day_chg: float, war_chg: float) -> go.Figure:
@@ -227,13 +251,13 @@ def build_price_chart(asset_name: str, price_df: pd.DataFrame,
         fig = go.Figure()
         fig.update_layout(
             plot_bgcolor="#0A0E1A", paper_bgcolor="#0A0E1A",
-            annotations=[dict(text="⚠️ No data available", xref="paper", yref="paper",
+            annotations=[dict(text="No data available", xref="paper", yref="paper",
                               x=0.5, y=0.5, showarrow=False,
                               font=dict(color="#8B99B5", size=14))]
         )
         return fig
 
-    lc = "#00E5A0" if war_chg >= 0 else "#FF3B5B"
+    lc  = "#00E5A0" if war_chg >= 0 else "#FF3B5B"
     rgb = "0,229,160" if war_chg >= 0 else "255,59,91"
 
     fig = go.Figure()
@@ -273,7 +297,7 @@ def build_price_chart(asset_name: str, price_df: pd.DataFrame,
 
     fig.update_layout(
         title=dict(
-            text=f"{asset_name}  |  Today: {'▲' if day_chg>=0 else '▼'} {day_chg:+.2f}%"
+            text=f"{asset_name}  |  Today: {'▲' if day_chg >= 0 else '▼'} {day_chg:+.2f}%"
                  f"  |  Since Feb 2022: {war_chg:+.1f}%",
             font=dict(color="#F0F4FF", size=14),
         ),
@@ -293,48 +317,44 @@ def build_price_chart(asset_name: str, price_df: pd.DataFrame,
 # MARKETS TAB
 # ─────────────────────────────────────────────────────────────────────────────
 def render_markets_tab(latest_df: pd.DataFrame, all_prices: dict, live_quotes: dict):
-    st.markdown('<div class="section-header">📊 Asset Price Monitor — Feb 24, 2022 → Today (Yahoo Finance)</div>',
+    st.markdown('<div class="section-header">Asset Price Monitor — Feb 24, 2022 to Today (Yahoo Finance)</div>',
                 unsafe_allow_html=True)
 
     if latest_df.empty:
-        st.error("❌ Market data unavailable. Ensure you have internet access and yfinance is installed.")
+        st.error("Market data unavailable. Ensure you have internet access and yfinance is installed.")
         return
 
-    cat_tabs = st.tabs(["📈 Indices", "🔥 Commodities", "💱 Currencies", "⚔️ Defense Stocks"])
+    cat_tabs = st.tabs(["Indices", "Commodities", "Currencies", "Defense Stocks"])
     for cat_tab, cat_key in zip(cat_tabs, ["Indices", "Commodities", "Currencies", "Defense Stocks"]):
         with cat_tab:
-            assets  = ASSET_CATEGORIES[cat_key]
-            cat_df  = latest_df[latest_df["Category"] == cat_key][
-                ["Asset","Price","Day %","Since Feb 22","Last Date"]].copy()
+            assets = ASSET_CATEGORIES[cat_key]
+            cat_df = latest_df[latest_df["Category"] == cat_key][
+                ["Asset", "Price", "Day %", "Since Feb 22", "Last Date"]].copy()
 
             if not cat_df.empty:
-                def color_num(v):
-                    if isinstance(v, (int,float)):
-                        return f"color:{'#00E5A0' if v>0 else '#FF3B5B' if v<0 else '#FFD700'}"
-                    return ""
                 styled = (cat_df.style
-                          .applymap(color_num, subset=["Day %","Since Feb 22"])
+                          .map(_color_num, subset=["Day %", "Since Feb 22"])
                           .format({"Price": "{:.4f}", "Day %": "{:+.2f}%", "Since Feb 22": "{:+.1f}%"}))
                 st.dataframe(styled, use_container_width=True,
-                             height=min(200, len(cat_df)*40+40))
+                             height=min(200, len(cat_df) * 40 + 40))
 
-            # Intraday live quote callout for this category
+            # Live quote callout
             live_row = []
             for name in assets:
                 q = live_quotes.get(name)
                 if q:
                     arrow = "▲" if q["change_pct"] >= 0 else "▼"
                     col   = "#00E5A0" if q["change_pct"] >= 0 else "#FF3B5B"
-                    src   = "⚡ live" if q.get("source") == "live" else "📅 EOD"
+                    src   = "live" if q.get("source") == "live" else "EOD"
                     live_row.append(
                         f"<b style='color:#F0F4FF'>{name}</b> "
                         f"<span style='font-family:monospace'>{q['price']:,.4f}</span> "
                         f"<span style='color:{col}'>{arrow}{abs(q['change_pct']):.2f}%</span> "
-                        f"<span style='color:#8B99B5;font-size:10px'>{src}</span>"
+                        f"<span style='color:#8B99B5;font-size:10px'>({src})</span>"
                     )
             if live_row:
                 st.markdown(
-                    '<div class="info-box" style="margin-bottom:12px;">🕒 <b>Live Quotes:</b> &nbsp;&nbsp;'
+                    '<div class="info-box" style="margin-bottom:12px;"><b>Live Quotes:</b> &nbsp;&nbsp;'
                     + " &nbsp;|&nbsp; ".join(live_row) + "</div>",
                     unsafe_allow_html=True
                 )
@@ -342,12 +362,12 @@ def render_markets_tab(latest_df: pd.DataFrame, all_prices: dict, live_quotes: d
             # Charts 2-per-row
             for i in range(0, len(assets), 2):
                 cols = st.columns(2)
-                for j, asset in enumerate(assets[i:i+2]):
+                for j, asset in enumerate(assets[i:i + 2]):
                     with cols[j]:
-                        df = all_prices.get(asset, pd.DataFrame())
+                        df  = all_prices.get(asset, pd.DataFrame())
                         row = latest_df[latest_df["Asset"] == asset]
-                        dc = float(row["Day %"].values[0])      if not row.empty else 0.0
-                        wc = float(row["Since Feb 22"].values[0]) if not row.empty else 0.0
+                        dc  = float(row["Day %"].values[0])       if not row.empty else 0.0
+                        wc  = float(row["Since Feb 22"].values[0]) if not row.empty else 0.0
                         st.plotly_chart(build_price_chart(asset, df, dc, wc),
                                         use_container_width=True,
                                         config={"displayModeBar": False})
@@ -360,17 +380,17 @@ def render_markets_tab(latest_df: pd.DataFrame, all_prices: dict, live_quotes: d
 # NEWS TAB
 # ─────────────────────────────────────────────────────────────────────────────
 def render_news_tab(articles: list):
-    st.markdown('<div class="section-header">📰 Live Geopolitical News — NewsAPI · Rule-Based Insights</div>',
+    st.markdown('<div class="section-header">Live Geopolitical News — NewsAPI · Rule-Based Insights</div>',
                 unsafe_allow_html=True)
 
     if not articles:
-        st.warning("No news articles loaded. Check your `NEWSAPI_KEY` in `config.py`.")
+        st.warning("No news articles loaded. Check your NEWSAPI_KEY in config.py.")
         return
 
     c1, c2 = st.columns([3, 1])
     with c1:
-        filters = st.multiselect("Filter by sentiment", ["risk","opportunity","mixed"],
-                                 default=["risk","opportunity","mixed"], key="news_filter")
+        filters = st.multiselect("Filter by sentiment", ["risk", "opportunity", "mixed"],
+                                 default=["risk", "opportunity", "mixed"], key="news_filter")
     with c2:
         st.markdown(f"<div style='padding-top:28px;font-size:11px;color:#8B99B5;'>"
                     f"{len(articles)} live articles · auto-refresh every 2 min</div>",
@@ -383,13 +403,13 @@ def render_news_tab(articles: list):
 
     for art in shown:
         sent = art["sentiment"]
-        icon = "🔴" if sent=="risk" else "🟢" if sent=="opportunity" else "🟡"
+        icon = "🔴" if sent == "risk" else "🟢" if sent == "opportunity" else "🟡"
         sectors_html = "".join(
-            f'<span class="sector-badge">{SECTOR_ICONS.get(s,"📊")} {s}</span>'
+            f'<span class="sector-badge">{s}</span>'
             for s in art["sectors"]
         )
-        desc = art.get("description","")
-        desc_short = (desc[:180]+"…") if len(desc)>180 else desc
+        desc       = art.get("description", "")
+        desc_short = (desc[:180] + "…") if len(desc) > 180 else desc
 
         st.markdown(f"""
         <div class="news-card {sent}">
@@ -411,7 +431,7 @@ def render_news_tab(articles: list):
 # MAPS & SECTOR TAB
 # ─────────────────────────────────────────────────────────────────────────────
 def render_maps_tab(sector_df: pd.DataFrame):
-    st.markdown('<div class="section-header">🗺️ Global Geopolitical Risk Map</div>',
+    st.markdown('<div class="section-header">Global Geopolitical Risk Map</div>',
                 unsafe_allow_html=True)
 
     for lc, leg in zip(st.columns(3), get_risk_legend()):
@@ -432,26 +452,23 @@ def render_maps_tab(sector_df: pd.DataFrame):
     except Exception as e:
         st.error(f"Map error: {e}")
 
-    st.markdown('<div class="section-header" style="margin-top:20px;">📋 Country Risk Tracker</div>',
+    st.markdown('<div class="section-header" style="margin-top:20px;">Country Risk Tracker</div>',
                 unsafe_allow_html=True)
 
     rows = [{
         "Country":         r["country"],
         "Risk Level":      r["risk_label"],
         "Event":           r["event"],
-        "Severity":        "🔴"*min(r["severity"],5) + "⚪"*(5-min(r["severity"],5)),
+        "Severity":        "H" * min(r["severity"], 5),
         "Affected Assets": r["assets"],
     } for r in get_country_risk_summary()]
 
-    def style_risk(v):
-        return ("color:#FF3B5B;font-weight:700" if v=="HIGH" else
-                "color:#FF8C42;font-weight:700" if v=="MEDIUM" else
-                "color:#00E5A0;font-weight:700" if v=="LOW" else "")
+    st.dataframe(
+        pd.DataFrame(rows).style.map(_color_risk, subset=["Risk Level"]),
+        use_container_width=True, height=380
+    )
 
-    st.dataframe(pd.DataFrame(rows).style.applymap(style_risk, subset=["Risk Level"]),
-                 use_container_width=True, height=380)
-
-    st.markdown('<div class="section-header" style="margin-top:20px;">📊 Sector Impact Heatmap</div>',
+    st.markdown('<div class="section-header" style="margin-top:20px;">Sector Impact Heatmap</div>',
                 unsafe_allow_html=True)
     if not sector_df.empty:
         st.plotly_chart(build_sector_heatmap(sector_df),
@@ -462,13 +479,13 @@ def render_maps_tab(sector_df: pd.DataFrame):
 # ANALYTICS TAB
 # ─────────────────────────────────────────────────────────────────────────────
 def render_analytics_tab(latest_df: pd.DataFrame):
-    st.markdown('<div class="section-header">📈 Cumulative Returns — All Assets Since Feb 2022</div>',
+    st.markdown('<div class="section-header">Cumulative Returns — All Assets Since Feb 2022</div>',
                 unsafe_allow_html=True)
 
     all_assets = list(ALL_TICKERS.keys())
-    selected = st.multiselect(
+    selected   = st.multiselect(
         "Select assets to compare", all_assets,
-        default=["S&P 500","Gold","Crude Oil (WTI)","HAL (India)","NIFTY 50","USD/INR"],
+        default=["S&P 500", "Gold", "Crude Oil (WTI)", "HAL (India)", "NIFTY 50", "USD/INR"],
         key="cum_ret",
     )
     cum = get_cumulative_returns()
@@ -478,7 +495,7 @@ def render_analytics_tab(latest_df: pd.DataFrame):
 
     c1, c2 = st.columns(2)
     with c1:
-        st.markdown('<div class="section-header">🔥 Commodity Daily % Change</div>',
+        st.markdown('<div class="section-header">Commodity Daily % Change</div>',
                     unsafe_allow_html=True)
         cd = get_commodity_daily_changes()
         if not cd.empty:
@@ -486,12 +503,13 @@ def render_analytics_tab(latest_df: pd.DataFrame):
                             use_container_width=True, config={"displayModeBar": False})
         else:
             st.warning("Commodity data unavailable.")
+
     with c2:
-        st.markdown('<div class="section-header">📊 Asset Correlation Matrix</div>',
+        st.markdown('<div class="section-header">Asset Correlation Matrix</div>',
                     unsafe_allow_html=True)
         corr_sel = st.multiselect(
             "Assets for correlation", all_assets,
-            default=["S&P 500","Gold","Crude Oil (WTI)","NIFTY 50","USD/INR","HAL (India)"],
+            default=["S&P 500", "Gold", "Crude Oil (WTI)", "NIFTY 50", "USD/INR", "HAL (India)"],
             key="corr",
         )
         full_corr = get_correlation_matrix()
@@ -501,22 +519,16 @@ def render_analytics_tab(latest_df: pd.DataFrame):
                 st.plotly_chart(build_correlation_matrix(full_corr.loc[avail, avail]),
                                 use_container_width=True, config={"displayModeBar": False})
 
-    st.markdown('<div class="section-header" style="margin-top:10px;">🏆 Performance League Table</div>',
+    st.markdown('<div class="section-header" style="margin-top:10px;">Performance League Table</div>',
                 unsafe_allow_html=True)
     if not latest_df.empty:
-        perf = latest_df[["Asset","Category","Price","Day %","Since Feb 22"]]\
-                   .sort_values("Since Feb 22", ascending=False).reset_index(drop=True)
-
-        def hl(v):
-            if not isinstance(v, (int,float)): return ""
-            if v > 20:  return "color:#00E5A0;font-weight:700"
-            if v > 0:   return "color:#34D399"
-            if v > -20: return "color:#FF8C42"
-            return "color:#FF3B5B;font-weight:700"
-
+        perf = (latest_df[["Asset", "Category", "Price", "Day %", "Since Feb 22"]]
+                .sort_values("Since Feb 22", ascending=False)
+                .reset_index(drop=True))
         st.dataframe(
-            perf.style.applymap(hl, subset=["Day %","Since Feb 22"])
-                .format({"Price":"{:.4f}","Day %":"{:+.2f}%","Since Feb 22":"{:+.1f}%"}),
+            perf.style
+                .map(_color_perf, subset=["Day %", "Since Feb 22"])
+                .format({"Price": "{:.4f}", "Day %": "{:+.2f}%", "Since Feb 22": "{:+.1f}%"}),
             use_container_width=True, height=500,
         )
 
@@ -533,19 +545,19 @@ def main():
         st.session_state.last_refresh = time.time()
         st.rerun()
 
-    with st.spinner("⚡ Fetching live market data from Yahoo Finance…"):
+    with st.spinner("Fetching live market data from Yahoo Finance..."):
         all_prices  = fetch_all_prices()
         latest_df   = get_latest_prices()
         live_quotes = get_live_quotes_all()
         sector_df   = get_sector_heatmap_data()
 
-    with st.spinner("📰 Fetching live news from NewsAPI…"):
+    with st.spinner("Fetching live news from NewsAPI..."):
         news_articles = fetch_news(max_articles=30)
 
     risk_score, risk_label = get_global_risk_score()
-    kpis        = get_kpi_metrics(latest_df)
-    last_upd    = datetime.utcnow().strftime("%H:%M UTC")
-    data_ok     = not latest_df.empty
+    kpis     = get_kpi_metrics(latest_df)
+    last_upd = datetime.utcnow().strftime("%H:%M UTC")
+    data_ok  = not latest_df.empty
 
     render_header(last_upd, risk_score, risk_label, data_ok)
     render_ticker_strip(live_quotes)
@@ -553,10 +565,10 @@ def main():
     st.markdown("<br>", unsafe_allow_html=True)
 
     t1, t2, t3, t4 = st.tabs([
-        "📈  Markets",
-        "📰  News & Insights",
-        "🗺️  Maps & Sector",
-        "📊  Analytics",
+        "Markets",
+        "News & Insights",
+        "Maps & Sector",
+        "Analytics",
     ])
     with t1: render_markets_tab(latest_df, all_prices, live_quotes)
     with t2: render_news_tab(news_articles)
@@ -567,13 +579,13 @@ def main():
     st.markdown(f"""
     <div style="position:fixed;bottom:10px;right:16px;background:#111827;border:1px solid #1E2D45;
          border-radius:8px;padding:6px 12px;font-size:10px;color:#8B99B5;">
-      🔄 Next refresh in ~{refresh_in}s &nbsp;|&nbsp; Yahoo Finance + NewsAPI
+      Next refresh in ~{refresh_in}s | Yahoo Finance + NewsAPI
     </div>""", unsafe_allow_html=True)
 
     st.markdown("""
     <div style="margin-top:30px;padding:12px;border-top:1px solid #1E2D45;text-align:center;">
       <span style="font-size:11px;color:#8B99B5;">
-        🌐 GeoSignal Intelligence · Market data: Yahoo Finance (yfinance) ·
+        GeoSignal Intelligence · Market data: Yahoo Finance ·
         News: NewsAPI.org · Insights: rule-based engine · Not financial advice.
       </span>
     </div>""", unsafe_allow_html=True)
