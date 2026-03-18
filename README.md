@@ -1,0 +1,2 @@
+# geopolitics
+geopoltical dashboard
